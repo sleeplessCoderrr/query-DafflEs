@@ -53,7 +53,7 @@ CREATE TABLE TransactionHeader(
     CheckInDate DATE NOT NULL,
     CheckOutDate DATE NOT NULL,
     ServiceDiscount DECIMAL(5,2) NOT NULL,
-    LateCheckOutHours TIME NOT NULL,
+    LateCheckOutHours TIME(0) NOT NULL,
     PaymentID CHAR(5) REFERENCES MsPayment(PaymentID),
     StaffID CHAR(5) REFERENCES MsStaff(StaffID),
     HotelID CHAR(5) REFERENCES MsHotel(HotelID)
