@@ -26,7 +26,8 @@ CREATE TABLE MsHotel(
     HotelID CHAR(5) PRIMARY KEY,
     HotelName VARCHAR(255) NOT NULL,
     HotelAddress VARCHAR(255) NOT NULL,
-    HotelPhoneNumber VARCHAR(255) CHECK(HotelPhoneNumber LIKE '(021)%')
+    HotelPhoneNumber VARCHAR(255) CHECK(HotelPhoneNumber LIKE '(021)%'),
+    HotelEmail VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE MsPayment(
@@ -48,6 +49,7 @@ CREATE TABLE MsRoom(
 CREATE TABLE TransactionHeader(
     TransactionID CHAR(5) PRIMARY KEY,
     CustomerID CHAR(5) REFERENCES MsCustomer(CustomerID),
+    RoomNumber INTEGER REFERENCES MsRoom(RoomNumber),
     CheckInDate DATE NOT NULL,
     CheckOutDate DATE NOT NULL,
     ServiceDiscount DECIMAL(5,2) NOT NULL,
