@@ -1,5 +1,4 @@
 CREATE DATABASE DafflEsHotel
-
 USE DafflEsHotel
 
 CREATE TABLE MsService(
@@ -32,7 +31,7 @@ CREATE TABLE MsHotel(
 
 CREATE TABLE MsPayment(
     PaymentID CHAR(5) PRIMARY KEY,
-    PaymentMethod VARCHAR CHECK(PaymentMethod IN ('Cash', 'Debit Card', 'Credit Card' ))
+    PaymentMethod VARCHAR(255) CHECK(PaymentMethod IN ('Cash', 'Debit Card', 'Credit Card' ))
 );
 
 CREATE TABLE RoomDetail(
@@ -43,13 +42,12 @@ CREATE TABLE RoomDetail(
 
 CREATE TABLE MsRoom(
     RoomNumber INTEGER PRIMARY KEY,
-    RoomID CHAR(5) REFERENCES RoomDetail(RoomID)
+    RoomID CHAR(5) REFERENCES RoomDetail(RoomID),
 );
 
 CREATE TABLE TransactionHeader(
     TransactionID CHAR(5) PRIMARY KEY,
     CustomerID CHAR(5) REFERENCES MsCustomer(CustomerID),
-    RoomNumber INTEGER REFERENCES MsRoom(RoomNumber),
     CheckInDate DATE NOT NULL,
     CheckOutDate DATE NOT NULL,
     ServiceDiscount DECIMAL(5,2) NOT NULL,
@@ -60,8 +58,10 @@ CREATE TABLE TransactionHeader(
 );
 
 CREATE TABLE TransactionDetail(
-    TrancasctionID CHAR(5) REFERENCES TransactionHeader(TransactionID),
+    TransactionID CHAR(5) REFERENCES TransactionHeader(TransactionID),
     ServiceID CHAR(5) REFERENCES MsService(ServiceID),
     ServiceDate DATE NOT NULL,
     ServiceQuantity INTEGER NOT NULL,
+    PRIMARY KEY (TransactionID, ServiceID)
 );
+
