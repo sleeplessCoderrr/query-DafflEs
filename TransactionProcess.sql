@@ -83,20 +83,12 @@ JOIN TransactionDetail td ON ms.ServiceID = td.ServiceID
 GROUP BY ms.ServiceID, ServiceName
 
 --9 (Flag)
-SELECT
-CONCAT(LEFT(mh.HotelID, 1), RIGHT(mh.HotelID, 1)) [Hotel ID],
-HotelAddress AS [Hotel Address],
-DATENAME(QUARTER, th.CheckInDate) AS quart
+SELECT DISTINCT(
+CONCAT(LEFT(mh.HotelID, 1), RIGHT(mh.HotelID, 1))) AS [Hotel ID],
+HotelAddress AS [Hotel Address]
 FROM MsHotel mh
 JOIN TransactionHeader th ON mh.HotelID = th.HotelID
-WHERE DATENAME(QUARTER, th.CheckInDate) IN (1, 2) AND
-CONCAT(LEFT(mh.HotelID, 1), RIGHT(mh.HotelID, 1)) IN (
-        SELECT DISTINCT
-        CONCAT(LEFT(mh.HotelID, 1), RIGHT(mh.HotelID, 1))
-        FROM MsHotel mh
-        JOIN TransactionHeader th ON mh.HotelID = th.HotelID
-        WHERE DATENAME(QUARTER, th.CheckInDate) IN (1, 2)
-    );
+WHERE DATENAME(QUARTER, th.CheckInDate) IN (1, 2) 
 
 --10
 SELECT
@@ -117,7 +109,7 @@ ms.StaffName AS [Mitarbeitername],
 CASE 
     WHEN PaymentMethod = 'Cash' THEN 'Bargeld'
     WHEN PaymentMethod = 'Credit Card' THEN 'Kreditkarte'
-    WHEN PaymentMethod = 'Debit Card' THEN 'Banküberweisung'
+    WHEN PaymentMethod = 'Debit Card' THEN 'Bankï¿½berweisung'
 	END AS [Zahlungsmethode Name]
 FROM TransactionHeader th
 JOIN MsCustomer mc ON mc.CustomerID = th.CustomerID
@@ -167,3 +159,95 @@ WHERE mp.PaymentMethod LIKE 'Cash'
 ROLLBACK 
 
 --15
+GO
+CREATE VIEW [Top5BranchDafflEsHotel]
+AS
+SELECT TOP 5 
+CONCAT('Branch', CAST(
+        CASE 
+            WHEN mh.HotelID LIKE '%0%' THEN SUBSTRING(mh.HotelID, 3, LEN(mh.HotelID)) 
+            ELSE SUBSTRING(mh.HotelID, 3, LEN(mh.HotelID)) 
+        END AS INT)
+    ) AS [HotelID],
+mh.HotelAddress AS [Hotel Address],
+COUNT(th.HotelID) AS [Total Transaction]
+FROM MsHotel mh
+JOIN TransactionHeader th ON mh.HotelID = th.HotelID
+GROUP BY CONCAT('Branch', CAST(
+        CASE 
+            WHEN mh.HotelID LIKE '%0%' THEN SUBSTRING(mh.HotelID, 3, LEN(mh.HotelID)) 
+            ELSE SUBSTRING(mh.HotelID, 3, LEN(mh.HotelID)) 
+        END AS INT)
+    ), mh.HotelAddress
+ORDER BY [Total Transaction] DESC
+
+
+GO
+SELECT *
+FROM Top5BranchDafflEsHotel
+
+--16
+SELECT 
+CONCAT('SE', CAST(ASCII(LEFT(ServiceName, 1))+ ASCII(RIGHT(ServiceName, 1)) AS VARCHAR)) AS [Service ID],
+ServiceName AS [Service Name],
+FORMAT(ServicePrice, 'C0', 'en-US') AS [Service Price]
+FROM MsService
+ORDER BY ServicePrice ASC;
+
+--17
+SELECT 
+CONCAT('BS', CAST(ASCII(LEFT(RoomTypeName, 1)) * 2  AS VARCHAR)) AS [Transaction ID],
+mr.RoomNumber AS [Room Number],
+rd.RoomTypeName AS [Room Type Name],
+DATEDIFF(DAY, th.CheckInDate, th.CheckOutDate) AS [Length of Stay]
+FROM RoomDetail rd
+JOIN MsRoom mr ON mr.RoomID = rd.RoomID
+JOIN TransactionHeader th ON mr.RoomNumber = th.RoomNumber
+WHERE rd.RoomTypeName LIKE 'Business'
+UNION
+SELECT 
+CONCAT('KG', CAST(ASCII(LEFT(RoomTypeName, 1)) * 2  AS VARCHAR)) AS [Transaction ID],
+mr.RoomNumber AS [Room Number],
+rd.RoomTypeName AS [Room Type Name],
+DATEDIFF(DAY, th.CheckInDate, th.CheckOutDate) AS [Length of Stay]
+FROM RoomDetail rd
+JOIN MsRoom mr ON mr.RoomID = rd.RoomID
+JOIN TransactionHeader th ON mr.RoomNumber = th.RoomNumber
+WHERE rd.RoomTypeName LIKE 'King'
+
+
+--18
+SELECT
+TransactionID AS [Transaction ID],
+th.RoomNumber AS [Room Number],
+CONCAT(LEFT(mc.CustomerName, CHARINDEX(' ', mc.CustomerName)), ' ', LEFT(SUBSTRING(mc.CustomerName, LEN(mc.CustomerName) - CHARINDEX(' ', REVERSE(mc.CustomerName)) + 2, LEN(mc.CustomerName)), 1)) AS [Name],
+CheckInDate AS [Check In Date],
+CheckOutDate AS [Check Out Date]
+FROM TransactionHeader th
+JOIN MsCustomer mc ON th.CustomerID = mc.CustomerID
+WHERE DATEDIFF(MONTH, GETDATE(), CheckInDate)  > -9 AND DATEDIFF(MONTH, GETDATE(), CheckInDate) < 1
+
+--19
+SELECT 
+REPLACE(StaffID, 'T', UPPER(SUBSTRING(LEFT(StaffName, CHARINDEX(' ', StaffName)), (LEN(LEFT(StaffName, CHARINDEX(' ', StaffName))) / 2) + 1, 1))) AS [StaffID],
+StaffName AS [Staff Name],
+StaffGender AS [Staff Gender]
+FROM MsStaff
+WHERE StaffGender LIKE 'Female' AND StaffName LIKE '%a%'
+
+--20
+SELECT 
+th.TransactionID AS [Transaction ID],
+mc.CustomerID AS [Customer ID],
+CONCAT(DATEDIFF(DAY, th.CheckInDate, th.CheckOutDate), ' days') AS [Length of Stay],
+FORMAT(SUM(mss.ServicePrice * td.ServiceQuantity), 'C0', 'id-ID') AS [Service Subtotal],
+FORMAT(RoomPrice * DATEDIFF(DAY, th.CheckInDate, th.CheckOutDate), 'C0', 'id-ID') AS [Room Subtotal],
+CONCAT(CONVERT(INT,ServiceDiscount * 100), '%') AS [Discount],
+FORMAT(SUM(mss.ServicePrice * td.ServiceQuantity) + RoomPrice * DATEDIFF(DAY, th.CheckInDate, th.CheckOutDate), 'C0', 'id-ID') AS [Total Price]
+FROM TransactionHeader th
+JOIN MsCustomer mc ON th.CustomerID = mc.CustomerID
+JOIN TransactionDetail td ON td.TransactionID = th.TransactionID
+JOIN MsService mss ON mss.ServiceID = td.ServiceID
+JOIN MsRoom mr ON mr.RoomNumber = th.RoomNumber
+JOIN RoomDetail rd On rd.RoomID = mr.RoomID
+GROUP BY th.TransactionID, mc.CustomerID, th.CheckInDate, th.CheckOutDate, RoomPrice, ServiceDiscount
